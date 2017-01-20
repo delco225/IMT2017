@@ -114,8 +114,7 @@ namespace QuantLib {
 
         TimeGrid grid(maturity, timeSteps_);
 
-        boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_,
-                                        payoff->strike()));
+        boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_, payoff->strike() ));
 
         boost::shared_ptr<BlackScholesLattice<T> > lattice(
             new BlackScholesLattice<T>(tree, r, maturity, timeSteps_));
