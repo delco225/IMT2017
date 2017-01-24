@@ -70,13 +70,10 @@ Volatility volatility = 0.20;
         // initialised a wanted timestep 
     Size timeSteps (30) ;
         // initialised the Binomial engine 
-    BinomialVanillaEngine_2<double> *  B2eng  = new  BinomialVanillaEngine_2 <double> ( process , timeSteps) ; 
+    BinomialVanillaEngine_2<CoxRossRubinstein> *  B2eng  = new  BinomialVanillaEngine_2 <CoxRossRubinstein> ( process , timeSteps) ; 
         // call the calculate method   
     B2eng->calculate() ; 
         // evaluate the result 
-
-      
-
 
 
         return 0;

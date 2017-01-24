@@ -117,7 +117,7 @@ namespace QuantLib {
         boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_, payoff->strike() ));
 
         boost::shared_ptr<BlackScholesLattice<T> > lattice(
-            new BlackScholesLattice<T>(tree, r, maturity, timeSteps_));
+            new BlackScholesLattice <T> (tree, r, maturity, timeSteps_));
 
         DiscretizedVanillaOption option(arguments_, *process_, grid);
 
