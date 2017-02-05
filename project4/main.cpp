@@ -2,7 +2,6 @@
 #include "binomialengine.hpp"
 #include <ql/pricingengines/vanilla/binomialengine.hpp>
 #include <ql/methods/lattices/binomialtree.hpp>
-#include <iostream>
 #include <ql/quantlib.hpp>
 #ifdef BOOST_MSVC
 #endif
@@ -16,15 +15,16 @@ int main() {
 
 
     try {
-
-Real underying = 20.3 ; 
+Real strike = 30 ;
+Real underying =70; 
 DayCounter dayCounter = Actual365Fixed() ; 
-Date settlementDate(20, January, 2017);
+Date settlementDate(20,February, 2017);
+ Date maturity(10, May, 2017);
 Rate riskFreeRate = 0.3 ;  
 Spread dividendYield = 0.00;
 Calendar calendar = TARGET();
 Volatility volatility = 0.20;
-        
+Option::Type type(Option::Call);      
         std::cout << "Underlying price = " <<  underying << std::endl << std::endl;
 
 
@@ -57,29 +57,30 @@ Volatility volatility = 0.20;
 
                 // Handle<BlackVolTermStructure>& blackVolTS,
                 Handle<BlackVolTermStructure> flatVolTS(boost::shared_ptr<BlackVolTermStructure>(new BlackConstantVol(settlementDate, calendar, volatility,dayCounter)));
-
-                
-                //const boost::shared_ptr<discretization>& d =boost::shared_ptr<discretization>()
-                //boost::shared_ptr<discretization> d =boost::shared_ptr<discretization>() ; 
-
-        // instaciate a GeneralizedBlackscholes process with the 5 arguments   
-           GeneralizedBlackScholesProcess * prr = new GeneralizedBlackScholesProcess (qt,termStructure , dividend ,flatVolTS ) ; 
+         
 
 		// add the stocastique process 
-    boost::shared_ptr<GeneralizedBlackScholesProcess>  process (prr); 
+    boost::shared_ptr<GeneralizedBlackScholesProcess> process  =  boost::shared_ptr<GeneralizedBlackScholesProcess> ( new GeneralizedBlackScholesProcess (qt,termStructure , dividend ,flatVolTS )) ; 
         // initialised a wanted timestep 
-    Size timeSteps (30) ;
-        // initialised the Binomial engine 
-    BinomialVanillaEngine_2<CoxRossRubinstein> *  B2eng  = new  BinomialVanillaEngine_2 <CoxRossRubinstein> ( process , timeSteps) ; 
-        // call the calculate method   
-    B2eng->calculate() ; 
-        // evaluate the result 
+    Size timeSteps (15) ;
 
+        // create an instrument and pass the Engine to the instrument 
+                       //instrument parametters 
+      boost::shared_ptr<StrikedTypePayoff> payoff (new PlainVanillaPayoff(type, strike)); 
+      boost::shared_ptr<Exercise> europeanExercise (new EuropeanExercise(maturity));
+	                   // instrument instanciation 
+      VanillaOption europeanOption(payoff, europeanExercise);
+                       // pass the engine to the instrument 
+      europeanOption.setPricingEngine(boost::shared_ptr< BinomialVanillaEngine_2<CoxRossRubinstein> >(new  BinomialVanillaEngine_2 <CoxRossRubinstein> ( process , timeSteps) ));  
+ 
+      
+        // evaluate the result 
+    std::cout << "evaluation  price  = " << europeanOption.NPV()  << "\n " ; 
 
         return 0;
 
     } catch (std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        std::cerr << e.what()  << std::endl;
         return 1;
     } catch (...) {
         std::cerr << "unknown error" << std::endl;

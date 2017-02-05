@@ -35,7 +35,8 @@
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
-
+#include <iostream>
+#include <iomanip>
 namespace QuantLib {
 
     //! Pricing engine for vanilla options using binomial trees
@@ -79,8 +80,11 @@ namespace QuantLib {
         DayCounter voldc = process_->blackVolatility()->dayCounter();
         Calendar volcal = process_->blackVolatility()->calendar();
 
+
         Real s0 = process_->stateVariable()->value();
+      
         QL_REQUIRE(s0 > 0.0, "negative or null underlying given");
+
         Volatility v = process_->blackVolatility()->blackVol(
             arguments_.exercise->lastDate(), s0);
         Date maturityDate = arguments_.exercise->lastDate();
@@ -100,7 +104,6 @@ namespace QuantLib {
         Handle<BlackVolTermStructure> flatVol(
             boost::shared_ptr<BlackVolTermStructure>(
                 new BlackConstantVol(referenceDate, volcal, v, voldc)));
-
         boost::shared_ptr<PlainVanillaPayoff> payoff =
             boost::dynamic_pointer_cast<PlainVanillaPayoff>(arguments_.payoff);
         QL_REQUIRE(payoff, "non-plain payoff given");
@@ -111,16 +114,14 @@ namespace QuantLib {
                          new GeneralizedBlackScholesProcess(
                                       process_->stateVariable(),
                                       flatDividends, flatRiskFree, flatVol));
-
         TimeGrid grid(maturity, timeSteps_);
 
         boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_, payoff->strike() ));
 
         boost::shared_ptr<BlackScholesLattice<T> > lattice(
             new BlackScholesLattice <T> (tree, r, maturity, timeSteps_));
-
+        
         DiscretizedVanillaOption option(arguments_, *process_, grid);
-
         option.initialize(lattice, maturity);
 
         // Partial derivatives calculated from various points in the
@@ -168,7 +169,49 @@ namespace QuantLib {
                                            results_.value,
                                            results_.delta,
                                            results_.gamma);
+
+         std::cout << "value  = " <<    p0      << std::endl << std::endl;
+         std::cout << "delta   = " <<  delta  << std::endl << std::endl;
+         std::cout << "gamma   = " <<  gamma  << std::endl << std::endl;
+         std::cout << "theta   = " <<  results_.theta << std::endl << std::endl;
+
     }
+
+
+template <class T>
+class OpimizedTree:public BinomialTree<T>{
+
+
+        public:
+        // instanciation 
+       OpimizedTree (const boost::shared_ptr<StochasticProcess1D>& process,Time end,Size steps);
+        // redefine the probabilities 
+        Real probability(Size, Size, Size branch) const {
+        
+        return 0 ;
+        }
+        
+        protected:
+        Real dx_, pu_, pd_;
+
+
+        }    ; 
+
+
+class OptimizedLattice : public Lattice {
+
+
+
+
+
+
+
+                };
+
+
+   
+
+
 
 }
 
