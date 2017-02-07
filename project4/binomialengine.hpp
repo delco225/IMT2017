@@ -118,8 +118,7 @@ namespace QuantLib {
 
         boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_, payoff->strike() ));
 
-        boost::shared_ptr<BlackScholesLattice<T> > lattice(
-            new BlackScholesLattice <T> (tree, r, maturity, timeSteps_));
+        boost::shared_ptr<BlackScholesLattice<T> > lattice(new BlackScholesLattice <T> (tree, r, maturity, timeSteps_));
         
         DiscretizedVanillaOption option(arguments_, *process_, grid);
         option.initialize(lattice, maturity);
@@ -175,8 +174,29 @@ namespace QuantLib {
          std::cout << "gamma   = " <<  gamma  << std::endl << std::endl;
          std::cout << "theta   = " <<  results_.theta << std::endl << std::endl;
 
-    }
+       Size n ,j =0 ; 
+       for (n=0 ;n<timeSteps_+1;n++) {
+               Real sumup =0 ; 
+                Size  ltz = lattice->size(n) ;
+                             
+                         for (j=0;j<ltz;j++){
 
+                                      sumup = sumup + lattice->underlying (n,j) ;
+                                     
+
+                            }            
+                             sumup = sumup/ltz - 30; 
+               std::cout << "price at time step  "<< n  << "  =  "   << sumup  <<  std::endl;
+                }
+
+    } ; 
+
+
+/**
+*  redefining a new binomial tree 
+*
+**/
+/**
 
 template <class T>
 class OpimizedTree:public BinomialTree<T>{
@@ -198,18 +218,64 @@ class OpimizedTree:public BinomialTree<T>{
         }    ; 
 
 
-class OptimizedLattice : public Lattice {
+
+*  redefining a new Lattice Class to reimplement the rollback method  
+*
+>
+
+**/
 
 
 
 
 
+template <class Impl>
+class OptimizedLattice : public Lattice ,  public CuriouslyRecurringTemplate<Impl>{
 
 
-                };
+public:  
+
+void rollback(DiscretizedAsset & asset, Time to) const {
+           partialRollback(asset,to);
+           asset.adjustValues();
+       }
 
 
-   
+void partialRollback(DiscretizedAsset & asset, Time to) const {
+           //rollback one step  from the very End of the Lattice 
+
+           AjustAssetToBs (asset) ; 
+
+           //change the value of the of the current data in the Lattice with the blackScholes formula
+           Array coxRoxValues =  asset.values() ;
+               //1 - compute the new values of the with the blackScholes formula  (coxRoxValues(i) = fb(coxRoxValues(i) ))
+               //2 - asset.values() = coxRoxValues
+           // add the minus one to skipe the End value 
+           Integer iFrom = Integer(t_.index(asset.time())) -1 ;
+           Integer iTo = Integer(t_.index(to));
+           for (Integer i=iFrom-1; i>=iTo; --i) {
+               Array newValues(this->impl().size(i));
+               this->impl().stepback(i, asset.values(), newValues);
+               asset.time() = t_[i];
+               asset.values() = newValues;
+               if (i != iTo) // skip the very last adjustment
+                   asset.adjustValues();
+           }
+       }
+
+
+
+void  AjustAssetToBs (DiscretizedAsset & asset ) const {
+
+        const TimeGrid& grid = timeGrid();
+        Size lastTimeref =  grid.size() ;  
+        rollback(asset ,  grid[lastTimeref -1] ) ; 
+
+}
+
+ };
+
+
 
 
 

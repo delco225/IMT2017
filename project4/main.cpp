@@ -16,7 +16,7 @@ int main() {
 
     try {
 Real strike = 30 ;
-Real underying =70; 
+Real underying =35; 
 DayCounter dayCounter = Actual365Fixed() ; 
 Date settlementDate(20,February, 2017);
  Date maturity(10, May, 2017);
@@ -62,7 +62,7 @@ Option::Type type(Option::Call);
 		// add the stocastique process 
     boost::shared_ptr<GeneralizedBlackScholesProcess> process  =  boost::shared_ptr<GeneralizedBlackScholesProcess> ( new GeneralizedBlackScholesProcess (qt,termStructure , dividend ,flatVolTS )) ; 
         // initialised a wanted timestep 
-    Size timeSteps (15) ;
+    Size timeSteps (50) ;
 
         // create an instrument and pass the Engine to the instrument 
                        //instrument parametters 
@@ -72,8 +72,6 @@ Option::Type type(Option::Call);
       VanillaOption europeanOption(payoff, europeanExercise);
                        // pass the engine to the instrument 
       europeanOption.setPricingEngine(boost::shared_ptr< BinomialVanillaEngine_2<CoxRossRubinstein> >(new  BinomialVanillaEngine_2 <CoxRossRubinstein> ( process , timeSteps) ));  
- 
-      
         // evaluate the result 
     std::cout << "evaluation  price  = " << europeanOption.NPV()  << "\n " ; 
 
