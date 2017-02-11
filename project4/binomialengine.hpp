@@ -34,6 +34,8 @@
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
 #include <iostream>
 #include <iomanip>
+#include <ql/pricingengines/blackscholescalculator.hpp>
+
 namespace QuantLib {
 
     //! Pricing engine for vanilla options using binomial trees
@@ -63,6 +65,120 @@ namespace QuantLib {
         boost::shared_ptr<GeneralizedBlackScholesProcess> process_;
         Size timeSteps_;
     };
+
+
+template <class T>
+class OptimizedLattice :  public TreeLattice1D< OptimizedLattice <T> > {
+
+
+public:  
+
+                     OptimizedLattice (const boost::shared_ptr<T>& tree,
+                                    Rate riskFreeRate,
+                                    Time end,
+                                    Size steps ,
+                                    Real bs_volatility, 
+                                    Real bs_strike );
+
+                    Rate riskFreeRate() const { return riskFreeRate_; }
+
+
+                    Time dt() const { return dt_; }
+
+                    Size size(Size i) const { return tree_->size(i); }
+
+                    DiscountFactor discount(Size,Size) const { return discount_; }
+
+                    void stepback(Size i, const Array& values, Array& newValues) const;
+
+                     Real underlying(Size i, Size index) const {
+                     return tree_->underlying(i, index);
+                        }
+
+                     Size descendant(Size i, Size index, Size branch) const {
+                    return tree_->descendant(i, index, branch);
+                                                                 }
+                     Real probability(Size i, Size index, Size branch) const {
+                     return tree_->probability(i, index, branch);
+                        }
+            
+                    void partialRollback(DiscretizedAsset & asset, Time to) const {
+                     //rollback one step  from the very End of the Lattice 
+                    
+                  
+                    
+                    AjustAssetToBs (asset) ; 
+
+
+ 
+                    Integer iFrom = Integer(ourTimeGrid.index(asset.time())) ;
+                    Integer iTo = Integer(ourTimeGrid.index(to));
+
+                    for (Integer i=iFrom-1; i>=iTo; --i) {
+                       Array newValues(this->impl().size(i));
+                         this->impl().stepback(i, asset.values(), newValues);
+                         asset.time() =ourTimeGrid[i];
+                         asset.values() = newValues;
+                   if (i != iTo) // skip the very last adjustment
+                   asset.adjustValues();
+           }
+       }
+
+                
+
+      
+
+
+        void  AjustAssetToBs (DiscretizedAsset & asset)  const {
+            
+           const  TimeGrid& grid = ourTimeGrid ;
+            int j = 0 ;
+            Option::Type type(Option::Call);
+            Size lastTimeref =  grid.size() ; 
+            std::cout << " asset time    "<< asset.time()   << " our grid  "  <<  ourTimeGrid [lastTimeref -1 ]    <<  std::endl;
+           if (asset.time() > ourTimeGrid [lastTimeref -2 ] ) {
+            Array newValues(this->impl().size(Integer(lastTimeref))); 
+            this->impl().stepback(Integer(lastTimeref), asset.values(), newValues);
+            asset.time() =   ourTimeGrid [lastTimeref -1 ]; 
+
+
+            //change the value of the of the current data in the Lattice with the blackScholes formula  
+            Array coxRoxValues =  asset.values() ;
+                    
+                boost::shared_ptr <AssetOrNothingPayoff> PayoffCall(new  AssetOrNothingPayoff(type,bs_Strike)) ; 
+                Real std_dev =  bs_Volatility *std::sqrt(riskFreeRate_) ; 
+                
+               for (j =0 ; j<coxRoxValues.size(); j++) {
+                      
+               BlackScholesCalculator bs_f(PayoffCall,  coxRoxValues[j] , 1.0,std_dev,discount_) ; // use the Blackschole calculator
+              
+               std::cout << " real price   "<< coxRoxValues[j]   << " bs price "  <<  bs_f.value()   <<  std::endl;
+
+               coxRoxValues[j] = bs_f.value() ; //2 - compute the new values of the with the blackScholes formula  (coxRoxValues(i) = bsformula (coxRoxValues(i) ))
+                                           	
+                        }
+
+                asset.values() = coxRoxValues ;     //3 - asset.values() = coxRoxValues
+            
+            
+     
+                        }
+            }
+
+
+protected:
+        boost::shared_ptr<T> tree_;
+        Rate riskFreeRate_;
+        Time dt_;
+        DiscountFactor discount_;
+        Real pd_, pu_;
+        TimeGrid ourTimeGrid  ; 
+        Real bs_Volatility ; 
+        Real bs_Strike ;  
+
+ };
+
+
 
 
     // template definitions
@@ -113,7 +229,7 @@ namespace QuantLib {
 
         boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_, payoff->strike() ));
 
-        boost::shared_ptr<BlackScholesLattice<T> > lattice(new BlackScholesLattice <T> (tree, r, maturity, timeSteps_));
+        boost::shared_ptr<OptimizedLattice<T> > lattice(new OptimizedLattice <T> (tree, r, maturity, timeSteps_, v , payoff->strike()));
         
         DiscretizedVanillaOption option(arguments_, *process_, grid);
         option.initialize(lattice, maturity);
@@ -191,109 +307,30 @@ namespace QuantLib {
 
 
 
-
-template <class T>
-class OptimizedLattice :  public TreeLattice1D< OptimizedLattice <T> > {
-
-
-public:  
-
-                     OptimizedLattice (const boost::shared_ptr<T>& tree,
-                                    Rate riskFreeRate,
-                                    Time end,
-                                    Size steps);
-
-                    Rate riskFreeRate() const { return riskFreeRate_; }
-
-
-                    Time dt() const { return dt_; }
-
-                    Size size(Size i) const { return tree_->size(i); }
-
-                    DiscountFactor discount(Size,Size) const { return discount_; }
-
-                    void stepback(Size i, const Array& values, Array& newValues) const;
-
-                     Real underlying(Size i, Size index) const {
-                     return tree_->underlying(i, index);
-                        }
-
-                     Size descendant(Size i, Size index, Size branch) const {
-                    return tree_->descendant(i, index, branch);
-                                                                 }
-                     Real probability(Size i, Size index, Size branch) const {
-                     return tree_->probability(i, index, branch);
-                        }
-            
-                    void partialRollback(DiscretizedAsset & asset, Time to) const {
-                     //rollback one step  from the very End of the Lattice 
-                    
-                  
-                    
-                    AjustAssetToBs (asset) ; 
-
-
- 
-                    Integer iFrom = Integer(ourTimeGrid.index(asset.time())) ;
-                    Integer iTo = Integer(ourTimeGrid.index(to));
-
-                    for (Integer i=iFrom-1; i>=iTo; --i) {
-                       Array newValues(this->impl().size(i));
-                         this->impl().stepback(i, asset.values(), newValues);
-                         asset.time() =ourTimeGrid[i];
-                         asset.values() = newValues;
-                   if (i != iTo) // skip the very last adjustment
-                   asset.adjustValues();
-           }
-       }
-
-
-        void  AjustAssetToBs (DiscretizedAsset & asset ) const {
-            
-            TimeGrid& grid = ourTimeGrid ;
-            Size lastTimeref =  grid.size() ; 
-           if (asset.time() > ourTimeGrid (lastTimeref -1 ) ) 
-                        {
-            Array newValues(this->impl().size(Integer(lastTimeref))); 
-            this->impl().stepback(Integer(lastTimeref), asset.values(), newValues);
-            asset.time() =   ourTimeGrid (lastTimeref -1 ) ; 
-
-            //change the value of the of the current data in the Lattice with the blackScholes formula  
-            Array coxRoxValues =  asset.values() ;
-            //1 - compute the new values of the with the blackScholes formula  (coxRoxValues(i) = fb(coxRoxValues(i) ))
-            //2 - asset.values() = coxRoxValues
-            // add the minus one to skipe the End value
-                        }
-            }
-
-
-protected:
-        boost::shared_ptr<T> tree_;
-        Rate riskFreeRate_;
-        Time dt_;
-        DiscountFactor discount_;
-        Real pd_, pu_;
-        TimeGrid ourTimeGrid  ; 
-
- };
-
       template <class T>
       OptimizedLattice <T>::OptimizedLattice (
                                             const boost::shared_ptr<T>& tree,
                                             Rate riskFreeRate,
                                             Time end,
-                                            Size steps)
+                                            Size steps , 
+                                            Real volatility, 
+                                            Real strike)
     : TreeLattice1D< OptimizedLattice <T> >(TimeGrid(end, steps), 2),
       tree_(tree), riskFreeRate_(riskFreeRate), dt_(end/steps),
         discount_(std::exp(-riskFreeRate*(dt_))) {
         pd_ = tree->probability(0, 0, 0);
         pu_ = tree->probability(0, 0, 1);
         ourTimeGrid = TimeGrid(end, steps) ; 
-}
+        bs_Volatility = volatility ; 
+        bs_Strike=  strike   ; 
+            }
 
-
-
-
+        template <class T>
+        void OptimizedLattice <T>::stepback(Size i, const Array& values, Array& newValues) const {
+        for (Size j=0; j<size(i); j++)
+          newValues[j] = (pd_*values[j] + pu_*values[j+1])*discount_;
+            
+        }
 
 }
 

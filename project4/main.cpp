@@ -62,7 +62,7 @@ Option::Type type(Option::Call);
 		// add the stocastique process 
     boost::shared_ptr<GeneralizedBlackScholesProcess> process  =  boost::shared_ptr<GeneralizedBlackScholesProcess> ( new GeneralizedBlackScholesProcess (qt,termStructure , dividend ,flatVolTS )) ; 
         // initialised a wanted timestep 
-    Size timeSteps (55) ;
+    Size timeSteps (30) ;
 
         // create an instrument and pass the Engine to the instrument 
                        //instrument parametters 
@@ -71,7 +71,7 @@ Option::Type type(Option::Call);
 	                   // instrument instanciation 
       VanillaOption europeanOption(payoff, europeanExercise);
                        // pass the engine to the instrument 
-      europeanOption.setPricingEngine(boost::shared_ptr< BinomialVanillaEngine_2<JarrowRudd> >(new  BinomialVanillaEngine_2 <JarrowRudd> ( process , timeSteps) ));  
+      europeanOption.setPricingEngine(boost::shared_ptr< BinomialVanillaEngine_2<CoxRossRubinstein> >(new  BinomialVanillaEngine_2 <CoxRossRubinstein> ( process , timeSteps) ));  
         // evaluate the result 
     std::cout << "evaluation  price  = " << europeanOption.NPV()  << "\n " ; 
 
