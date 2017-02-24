@@ -105,18 +105,14 @@ public:
                     void partialRollback(DiscretizedAsset & asset, Time to) const {
                      //rollback one step  from the very End of the Lattice 
                     
-                  
-                    
-                    AjustAssetToBs (asset) ; 
-
-
- 
+                    AjustAssetToBs (asset) ;  
                     Integer iFrom = Integer(ourTimeGrid.index(asset.time())) ;
                     Integer iTo = Integer(ourTimeGrid.index(to));
 
                     for (Integer i=iFrom-1; i>=iTo; --i) {
                        Array newValues(this->impl().size(i));
                          this->impl().stepback(i, asset.values(), newValues);
+                        // std::cout << "value of the asset " << asset.values() << std::endl;
                          asset.time() =ourTimeGrid[i];
                          asset.values() = newValues;
                    if (i != iTo) // skip the very last adjustment
@@ -135,25 +131,24 @@ public:
             int j = 0 ;
             Option::Type type(Option::Call);
             Size lastTimeref =  grid.size() ; 
-            std::cout << " asset time    "<< asset.time()   << " our grid  "  <<  ourTimeGrid [lastTimeref -1 ]    <<  std::endl;
+           // std::cout << " asset time    "<< asset.time()   << " our grid  "  <<  ourTimeGrid [lastTimeref -1 ]    <<  std::endl;
            if (asset.time() > ourTimeGrid [lastTimeref -2 ] ) {
-            Array newValues(this->impl().size(Integer(lastTimeref))); 
-            this->impl().stepback(Integer(lastTimeref), asset.values(), newValues);
-            asset.time() =   ourTimeGrid [lastTimeref -1 ]; 
-
+            Array newValues(this->impl().size(Integer(lastTimeref-2))); 
+            this->impl().stepback(Integer(lastTimeref-2), asset.values(), newValues);
+           // std::cout << "value of the asset " << asset.values() << std::endl;
+            asset.time() =   ourTimeGrid [lastTimeref -2 ]; 
 
             //change the value of the of the current data in the Lattice with the blackScholes formula  
             Array coxRoxValues =  asset.values() ;
                     
-                boost::shared_ptr <AssetOrNothingPayoff> PayoffCall(new  AssetOrNothingPayoff(type,bs_Strike)) ; 
-                Real std_dev =  bs_Volatility *std::sqrt(riskFreeRate_) ; 
+                boost::shared_ptr <PlainVanillaPayoff> PayoffCall(new  PlainVanillaPayoff (type,bs_Strike)) ; 
+               
+                Real std_dev =  bs_Volatility *std::sqrt(ourTimeGrid [lastTimeref -1 ] -ourTimeGrid [lastTimeref -2 ] ) ; 
+               
                 
                for (j =0 ; j<coxRoxValues.size(); j++) {
                       
-               BlackScholesCalculator bs_f(PayoffCall,  coxRoxValues[j] , 1.0,std_dev,discount_) ; // use the Blackschole calculator
-              
-               std::cout << " real price   "<< coxRoxValues[j]   << " bs price "  <<  bs_f.value()   <<  std::endl;
-
+               BlackScholesCalculator bs_f(PayoffCall,  underlying(lastTimeref -2 , j)*std::exp(( riskFreeRate_)*dt_) , 1.0,std_dev,discount_) ; // use the Blackschole calculator
                coxRoxValues[j] = bs_f.value() ; //2 - compute the new values of the with the blackScholes formula  (coxRoxValues(i) = bsformula (coxRoxValues(i) ))
                                            	
                         }
@@ -240,6 +235,9 @@ protected:
 
         // Rollback to third-last step, and get underlying prices (s2) &
         // option values (p2) at this point
+
+        // rollback at every point 
+
         option.rollback(grid[2]);
         Array va2(option.values());
         QL_ENSURE(va2.size() == 3, "Expect 3 nodes in grid at second step");
@@ -280,31 +278,7 @@ protected:
                                            results_.delta,
                                            results_.gamma);
 
-         std::cout << "value  = " <<    p0      << std::endl << std::endl;
-         std::cout << "delta   = " <<  delta  << std::endl << std::endl;
-         std::cout << "gamma   = " <<  gamma  << std::endl << std::endl;
-         std::cout << "theta   = " <<  results_.theta << std::endl << std::endl;
-
-       Size n ,j =0 ; 
-       for (n=0 ;n<timeSteps_+1;n++) {
-               Real sumup =0 ; 
-                Size  ltz = lattice->size(n) ;
-                             
-                         for (j=0;j<ltz;j++){
-
-                                      sumup = sumup + lattice->underlying (n,j) ;
-                                     
-
-                            }            
-                             sumup = sumup/ltz ; 
-               std::cout << "price at time step  "<< n  << "  =  "   << sumup  <<  std::endl;
-                }
-
     } ; 
-
-
-
-
 
 
       template <class T>
