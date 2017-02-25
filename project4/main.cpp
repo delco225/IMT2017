@@ -33,7 +33,7 @@ Real strike = 110;
 Real underying =100; 
 DayCounter dayCounter = Actual365Fixed() ; 
  Date settlementDate(01,March, 2017);
- Date maturity(27, February, 2018);
+ Date maturity(31, March , 2017);
 Rate riskFreeRate = 0.03 ;  
 Spread dividendYield = 0.00;
 Calendar calendar = TARGET();
@@ -52,7 +52,7 @@ Option::Type type(Option::Call);
    
   int i = 0 ;                 
   int i_min = 20 ; 
-  int i_max = 300 ;  
+  int i_max = 400 ;  
 
         // add your code here
 

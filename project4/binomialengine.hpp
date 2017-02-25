@@ -75,10 +75,11 @@ public:
 
                      OptimizedLattice (const boost::shared_ptr<T>& tree,
                                     Rate riskFreeRate,
+                                    Rate dividendYield ,
                                     Time end,
                                     Size steps ,
                                     Real bs_volatility, 
-                                    Real bs_strike );
+                                    Real bs_strike    );
 
                     Rate riskFreeRate() const { return riskFreeRate_; }
 
@@ -148,7 +149,7 @@ public:
                 
                for (j =0 ; j<coxRoxValues.size(); j++) {
                       
-               BlackScholesCalculator bs_f(PayoffCall,  underlying(lastTimeref -2 , j)*std::exp(( riskFreeRate_)*dt_) , 1.0,std_dev,discount_) ; // use the Blackschole calculator
+               BlackScholesCalculator bs_f(PayoffCall, underlying(lastTimeref -2 , j), std::exp((dividendYield_)*dt_),std_dev,discount_) ; // use the Blackschole calculator
                coxRoxValues[j] = bs_f.value() ; //2 - compute the new values of the with the blackScholes formula  (coxRoxValues(i) = bsformula (coxRoxValues(i) ))
                                            	
                         }
@@ -170,6 +171,7 @@ protected:
         TimeGrid ourTimeGrid  ; 
         Real bs_Volatility ; 
         Real bs_Strike ;  
+        Rate dividendYield_ ;  
 
  };
 
@@ -224,7 +226,7 @@ protected:
 
         boost::shared_ptr<T> tree(new T(bs, maturity, timeSteps_, payoff->strike() ));
 
-        boost::shared_ptr<OptimizedLattice<T> > lattice(new OptimizedLattice <T> (tree, r, maturity, timeSteps_, v , payoff->strike()));
+        boost::shared_ptr<OptimizedLattice<T> > lattice(new OptimizedLattice <T> (tree, r, q,maturity, timeSteps_, v , payoff->strike()));
         
         DiscretizedVanillaOption option(arguments_, *process_, grid);
         option.initialize(lattice, maturity);
@@ -285,6 +287,7 @@ protected:
       OptimizedLattice <T>::OptimizedLattice (
                                             const boost::shared_ptr<T>& tree,
                                             Rate riskFreeRate,
+                                            Rate dividendYield , 
                                             Time end,
                                             Size steps , 
                                             Real volatility, 
@@ -297,6 +300,8 @@ protected:
         ourTimeGrid = TimeGrid(end, steps) ; 
         bs_Volatility = volatility ; 
         bs_Strike=  strike   ; 
+        dividendYield_ =  dividendYield ; 
+        
             }
 
         template <class T>
